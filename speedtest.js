@@ -1,18 +1,19 @@
-#!/usr/bin/env node
-'use strict';
+"use strict";
 
 const REQUESTS = 10;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function usage() {
-  console.error('Usage: node speedtest.js <url>');
+  console.error("Usage: node speedtest.js <url>");
   process.exit(1);
 }
 
 async function download(url) {
   const start = process.hrtime.bigint();
   const res = await fetch(url, {
-    cache: 'no-store',
-    headers: { 'User-Agent': 'speedtest-cli/1.0 (Node.js)' },
+    cache: "no-store",
+    headers: { "User-Agent": "speedtest-cli/1.0 (Node.js)" },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -28,7 +29,7 @@ async function download(url) {
 }
 
 function formatBytes(bytes) {
-  const units = ['B', 'KB', 'MB', 'GB'];
+  const units = ["B", "KiB", "MiB", "GiB"];
   let value = bytes;
   let i = 0;
   while (value >= 1024 && i < units.length - 1) {
@@ -61,23 +62,29 @@ async function main() {
       totalBytes += bytes;
       totalMs += ms;
       console.log(
-        `#${String(i).padStart(2)}  ${ms.toFixed(1).padStart(9)} ms  ${formatBytes(bytes).padStart(10)}`
+        `#${String(i).padStart(2)}  ${ms.toFixed(1).padStart(9)} ms  ${formatBytes(bytes).padStart(10)}`,
       );
     } catch (err) {
-      console.error(`#${String(i).padStart(2)}  failed: ${err.cause?.message || err.message}`);
+      console.error(
+        `#${String(i).padStart(2)}  failed: ${err.cause?.message || err.message}`,
+      );
       process.exit(1);
     }
   }
 
   const avgMs = totalMs / REQUESTS;
   const seconds = totalMs / 1000;
-  const mbPerSec = totalBytes / (1024 * 1024) / seconds;
+  const mibPerSec = totalBytes / (1024 * 1024) / seconds;
   const mbitPerSec = (totalBytes * 8) / 1e6 / seconds;
 
-  console.log('\n--- Results ---');
+  console.log("\n--- Results ---");
   console.log(`Average request time: ${avgMs.toFixed(1)} ms`);
-  console.log(`Total downloaded:     ${formatBytes(totalBytes)} (${totalBytes} bytes)`);
-  console.log(`Download speed:       ${mbPerSec.toFixed(2)} MB/s (${mbitPerSec.toFixed(2)} Mbit/s)`);
+  console.log(
+    `Total downloaded:     ${formatBytes(totalBytes)} (${totalBytes} bytes)`,
+  );
+  console.log(
+    `Download speed:       ${mibPerSec.toFixed(2)} MiB/s (${mbitPerSec.toFixed(2)} Mbit/s)`,
+  );
 }
 
 main();
